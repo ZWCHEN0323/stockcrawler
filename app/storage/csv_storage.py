@@ -24,12 +24,13 @@ class CsvStorage(StorageEngine):
         return os.path.join(settings.data_path, f"{data_id}_{kind}.csv")
 
     def _append_dedup(self, path: str, df: pd.DataFrame) -> None:
+        if df.empty:
+            return
+        # 統一使用 stock_id
         if os.path.exists(path):
-            old = pd.read_csv(path)
+            old = pd.read_csv(path, dtype=str)
             merged = pd.concat([old, df], ignore_index=True)
-            merged = merged.drop_duplicates(subset=["data_id", "date"]).sort_values(
-                "date"
-            )
+            merged = merged.drop_duplicates(subset=["stock_id", "date"]).sort_values("date")
         else:
             merged = df.sort_values("date")
         merged.to_csv(path, index=False)
@@ -37,27 +38,26 @@ class CsvStorage(StorageEngine):
     def save_price(self, df: pd.DataFrame) -> None:
         if df.empty:
             return
-        data_id = str(df.iloc[0]["data_id"])
+        data_id = str(df.iloc[0]["stock_id"])
         self._append_dedup(self._path(data_id, "price"), df)
 
     def save_institutional(self, df: pd.DataFrame) -> None:
         if df.empty:
             return
-        data_id = str(df.iloc[0]["data_id"])
+        data_id = str(df.iloc[0]["stock_id"])
         self._append_dedup(self._path(data_id, "institutional"), df)
 
     def save_per(self, df: pd.DataFrame) -> None:
         if df.empty:
             return
-        data_id = str(df.iloc[0]["data_id"])
+        data_id = str(df.iloc[0]["stock_id"])
         self._append_dedup(self._path(data_id, "per"), df)
 
     def get_last_date(self, table: str, data_id: str) -> str | None:
         path = self._path(data_id, table)
         if not os.path.exists(path):
             return None
-        df = pd.read_csv(path, usecols=["date"])
+        df = pd.read_csv(path, usecols=["date"], dtype=str)
         if df.empty:
             return None
         return str(df["date"].max())
-

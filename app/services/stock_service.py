@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable
 
-from app.api.finmind_client import FinMindClient
+from app.api.yahoo_finance_client import YahooFinanceClient
 from app.config import settings
 from app.crawler.crawler import TaiwanStockCrawler
 from app.storage.base import StorageEngine
@@ -24,7 +24,7 @@ class StockService:
 
     @classmethod
     def create(cls) -> "StockService":
-        client = FinMindClient()
+        client = YahooFinanceClient()
         storage = build_storage()
         crawler = TaiwanStockCrawler(client=client, storage=storage)
         return cls(crawler=crawler)
@@ -35,11 +35,13 @@ class StockService:
 
     def crawl(
         self,
-        data_ids: Iterable[str],
+        stock_ids: Iterable[str],
         start_date: str | None = None,
         end_date: str | None = None,
     ) -> None:
-        # end_date is supported by FinMindRequest but not yet used in incremental strategy
+        """
+        end_date 在 Yahoo API 版本目前可以忽略，
+        因為 incremental crawl 已經只抓 last_date → today
+        """
         _ = end_date
-        self.crawler.crawl_many(data_ids, start_date=start_date or settings.start_date)
-
+        self.crawler.crawl_many(stock_ids, start_date=start_date or settings.start_date)
